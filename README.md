@@ -2,7 +2,7 @@
 
 End-to-end retail analytics engine built with Java and SQL that cleans messy sales data and answers real business questions like revenue trends, top sellers, and churn risk through a REST API.
 
-Built with **Java, Spring Boot, MySQL, and raw SQL (window functions, ranking, correlated subqueries)**.
+Built with **Java, Spring Boot, MySQL, and SQL (window functions, ranking, correlated subqueries)**.
 
 ---
 
@@ -24,7 +24,7 @@ CSV (messy) → Java validation/cleaning → MySQL (normalized schema) → SQL a
 |---|---|---|
 | Ingestion | Java (CsvParser, RecordValidator, DataLoader) | Row-by-row validation and cleaning needs real logic - not something SQL alone can express well |
 | Persistence | Spring Data JPA + MySQL | Standard CRUD, entity relationships, foreign keys |
-| Analytics | `JdbcTemplate` + raw SQL | Window functions and correlated subqueries aren't cleanly expressible through an ORM - dropping to raw SQL here shows the actual query design |
+| Analytics | `JdbcTemplate` + SQL | Window functions and correlated subqueries aren't cleanly expressible through an ORM - writing SQL directly here shows the actual query design |
 | API | Spring Boot REST controllers | Exposes both ingestion and analytics as endpoints |
 
 ---
@@ -101,38 +101,76 @@ ORDER BY days_since_last_order DESC
 
 ---
 
-## Running it locally
+## Installation
 
 **Prerequisites:** Java 17+, Maven, MySQL 8+
 
-1. Create the database:
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/rishikesanpurush/retail-analytics-engine.git
+   cd retail-analytics-engine
+   ```
+2. Create the database:
    ```sql
    CREATE DATABASE retail_analytics;
    ```
-2. Set your MySQL password as an environment variable (kept out of version control):
+3. Set your MySQL password as an environment variable (kept out of version control):
    ```bash
    export DB_PASSWORD=your_mysql_password
    ```
-3. Run the app:
+4. Run the app:
    ```bash
    ./mvnw spring-boot:run
    ```
-4. Trigger ingestion (loads the bundled sample CSV):
-   ```
-   GET http://localhost:8080/api/ingest
-   ```
-5. Query the analytics endpoints:
-   ```
-   GET http://localhost:8080/api/analytics/revenue-trend
-   GET http://localhost:8080/api/analytics/top-products
-   GET http://localhost:8080/api/analytics/churn-risk?days=14
-   ```
+
+---
+
+## Usage
+
+**1. Trigger ingestion** (loads and cleans the bundled sample CSV into MySQL):
+```
+GET http://localhost:8080/api/ingest
+```
+
+**2. Query the analytics endpoints:**
+```
+GET http://localhost:8080/api/analytics/revenue-trend
+GET http://localhost:8080/api/analytics/top-products
+GET http://localhost:8080/api/analytics/churn-risk?days=14
+```
+
+---
+
+## Example output
+
+**`/api/ingest`** on the bundled 25-row sample CSV:
+```json
+{
+  "totalRowsParsed": 25,
+  "rowsAccepted": 19,
+  "rowsRejected": 6,
+  "rejectedDetails": [
+    { "reason": "Quantity must be positive (got -2)", "record": { "customerName": "Emily Wilson", "productName": "Wireless Mouse" } },
+    { "reason": "Missing product name", "record": { "customerName": "Sarah Johnson" } },
+    { "reason": "Invalid email format", "record": { "customerName": "Lisa Martinez", "customerEmail": "lisa.martinez@email" } }
+  ]
+}
+```
+
+**`/api/analytics/top-products`:**
+```json
+[
+  { "category": "Electronics", "productName": "USB Cable", "unitsSold": 7, "rank": 1 },
+  { "category": "Office Supplies", "productName": "Sticky Notes", "unitsSold": 10, "rank": 1 },
+  { "category": "Furniture", "productName": "Office Chair", "unitsSold": 3, "rank": 1 }
+]
+```
 
 ---
 
 ## Design decisions worth noting
 
-- **JPA for CRUD, raw SQL for analytics** - used the right tool for each job rather than forcing everything through one abstraction.
+- **JPA for CRUD, SQL for analytics** - used the right tool for each job rather than forcing everything through one abstraction.
 - **`BigDecimal` for money, not `double`** - avoids floating-point rounding errors in financial calculations.
 - **Environment variables for credentials** - `application.properties` references `${DB_PASSWORD}` rather than a hardcoded value, so secrets never enter version control.
 - **Upsert pattern for customers/products** - the ingestion pipeline checks for existing records before creating new ones, so re-running ingestion on overlapping data doesn't create duplicates.
@@ -151,3 +189,10 @@ trade_items (trade_item_id, trade_id, asset_id, quantity, price_at_trade)
 ```
 
 Same joins, same window functions - swapped domain, identical technical approach (portfolio value trends, top holdings by sector, investor inactivity).
+
+---
+
+## Contact
+
+Built by Rishikesan Purushothaman.
+Feel free to reach out via [GitHub](https://github.com/rishikesanpurush) with questions or feedback.

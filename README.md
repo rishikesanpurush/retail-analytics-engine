@@ -1,6 +1,6 @@
 # Retail Analytics Engine
 
-A backend pipeline that ingests messy retail sales data, validates and cleans it in Java, and exposes SQL-driven business analytics through a REST API.
+End-to-end retail analytics engine built with Java and SQL that cleans messy sales data and answers real business questions like revenue trends, top sellers, and churn risk through a REST API.
 
 Built with **Java, Spring Boot, MySQL, and raw SQL (window functions, ranking, correlated subqueries)**.
 
@@ -8,9 +8,9 @@ Built with **Java, Spring Boot, MySQL, and raw SQL (window functions, ranking, c
 
 ## The problem
 
-Raw sales data from real-world sources is rarely clean — duplicate records, invalid emails, negative quantities, inconsistent date formats. Before a business can trust any dashboard or report built on top of it, that data needs to be validated and normalized.
+Raw sales data from real-world sources is rarely clean - duplicate records, invalid emails, negative quantities, inconsistent date formats. Before a business can trust any dashboard or report built on top of it, that data needs to be validated and normalized.
 
-This project simulates that pipeline end-to-end: a messy CSV goes in, a clean relational database comes out, and a set of analytics endpoints answer real business questions — revenue trends, best-selling products, and customers at risk of churning.
+This project simulates that pipeline end-to-end: a messy CSV goes in, a clean relational database comes out, and a set of analytics endpoints answer real business questions - revenue trends, best-selling products, and customers at risk of churning.
 
 ---
 
@@ -22,9 +22,9 @@ CSV (messy) → Java validation/cleaning → MySQL (normalized schema) → SQL a
 
 | Layer | Tool | Why |
 |---|---|---|
-| Ingestion | Java (CsvParser, RecordValidator, DataLoader) | Row-by-row validation and cleaning needs real logic — not something SQL alone can express well |
+| Ingestion | Java (CsvParser, RecordValidator, DataLoader) | Row-by-row validation and cleaning needs real logic - not something SQL alone can express well |
 | Persistence | Spring Data JPA + MySQL | Standard CRUD, entity relationships, foreign keys |
-| Analytics | `JdbcTemplate` + raw SQL | Window functions and correlated subqueries aren't cleanly expressible through an ORM — dropping to raw SQL here shows the actual query design |
+| Analytics | `JdbcTemplate` + raw SQL | Window functions and correlated subqueries aren't cleanly expressible through an ORM - dropping to raw SQL here shows the actual query design |
 | API | Spring Boot REST controllers | Exposes both ingestion and analytics as endpoints |
 
 ---
@@ -53,9 +53,9 @@ The ingestion pipeline (`/api/ingest`) reads a raw CSV and rejects rows that fai
 - Unparseable dates (the parser accepts multiple formats: `2024-01-05`, `01/06/2024`, `Jan 6 2024`)
 - Exact duplicate rows
 
-Rows that pass validation are normalized (trimmed, lowercased emails, parsed dates/prices) and loaded via an upsert pattern — existing customers/products are matched by email/name rather than duplicated.
+Rows that pass validation are normalized (trimmed, lowercased emails, parsed dates/prices) and loaded via an upsert pattern - existing customers/products are matched by email/name rather than duplicated.
 
-**Example result on the sample dataset (25 rows):** 19 accepted, 6 rejected — each rejection with a human-readable reason, e.g. `"Quantity must be positive (got -2)"`.
+**Example result on the sample dataset (25 rows):** 19 accepted, 6 rejected - each rejection with a human-readable reason, e.g. `"Quantity must be positive (got -2)"`.
 
 ---
 
@@ -63,7 +63,7 @@ Rows that pass validation are normalized (trimmed, lowercased emails, parsed dat
 
 Three endpoints, each answering a specific business question:
 
-**`GET /api/analytics/revenue-trend`** — Monthly revenue with a running total, using a window function:
+**`GET /api/analytics/revenue-trend`** - Monthly revenue with a running total, using a window function:
 ```sql
 SELECT
     DATE_FORMAT(o.order_date, '%Y-%m') AS month,
@@ -77,7 +77,7 @@ ORDER BY month
 ```
 *Answers: "Is revenue growing month over month?"*
 
-**`GET /api/analytics/top-products`** — Top 3 best sellers per category, using `RANK()`:
+**`GET /api/analytics/top-products`** - Top 3 best sellers per category, using `RANK()`:
 ```sql
 SELECT category, product_name, units_sold, rnk FROM (
     SELECT p.category, p.name AS product_name, SUM(oi.quantity) AS units_sold,
@@ -88,7 +88,7 @@ SELECT category, product_name, units_sold, rnk FROM (
 ```
 *Answers: "What should we stock more of, per category?"*
 
-**`GET /api/analytics/churn-risk?days=14`** — Customers inactive relative to the most recent order in the dataset:
+**`GET /api/analytics/churn-risk?days=14`** - Customers inactive relative to the most recent order in the dataset:
 ```sql
 SELECT c.customer_id, c.name, c.email, MAX(o.order_date) AS last_order_date,
     DATEDIFF((SELECT MAX(order_date) FROM orders), MAX(o.order_date)) AS days_since_last_order
@@ -97,7 +97,7 @@ GROUP BY c.customer_id, c.name, c.email
 HAVING days_since_last_order > ?
 ORDER BY days_since_last_order DESC
 ```
-*Answers: "Which customers should we re-engage?"* Uses a correlated subquery against the dataset's own max date, so it works correctly on historical data — not just live data compared to today.
+*Answers: "Which customers should we re-engage?"* Uses a correlated subquery against the dataset's own max date, so it works correctly on historical data - not just live data compared to today.
 
 ---
 
@@ -132,16 +132,16 @@ ORDER BY days_since_last_order DESC
 
 ## Design decisions worth noting
 
-- **JPA for CRUD, raw SQL for analytics** — used the right tool for each job rather than forcing everything through one abstraction.
-- **`BigDecimal` for money, not `double`** — avoids floating-point rounding errors in financial calculations.
-- **Environment variables for credentials** — `application.properties` references `${DB_PASSWORD}` rather than a hardcoded value, so secrets never enter version control.
-- **Upsert pattern for customers/products** — the ingestion pipeline checks for existing records before creating new ones, so re-running ingestion on overlapping data doesn't create duplicates.
+- **JPA for CRUD, raw SQL for analytics** - used the right tool for each job rather than forcing everything through one abstraction.
+- **`BigDecimal` for money, not `double`** - avoids floating-point rounding errors in financial calculations.
+- **Environment variables for credentials** - `application.properties` references `${DB_PASSWORD}` rather than a hardcoded value, so secrets never enter version control.
+- **Upsert pattern for customers/products** - the ingestion pipeline checks for existing records before creating new ones, so re-running ingestion on overlapping data doesn't create duplicates.
 
 ---
 
 ## Extending to other domains
 
-The schema and pipeline pattern generalize directly to adjacent use cases — for example, a portfolio/finance version:
+The schema and pipeline pattern generalize directly to adjacent use cases - for example, a portfolio/finance version:
 
 ```
 investors (investor_id, name, email, signup_date, region)
@@ -150,4 +150,4 @@ trades    (trade_id, investor_id, trade_date, status)
 trade_items (trade_item_id, trade_id, asset_id, quantity, price_at_trade)
 ```
 
-Same joins, same window functions — swapped domain, identical technical approach (portfolio value trends, top holdings by sector, investor inactivity).
+Same joins, same window functions - swapped domain, identical technical approach (portfolio value trends, top holdings by sector, investor inactivity).

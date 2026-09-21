@@ -168,6 +168,18 @@ GET http://localhost:8080/api/analytics/churn-risk?days=14
 
 ---
 
+## Insights
+
+A few observations from running the pipeline on the sample dataset:
+
+- **Data quality:** 24% of raw rows (6 of 25) failed validation, most commonly due to invalid quantities (zero or negative) and one exact duplicate order. This suggests the upstream source data would benefit from input validation at the point of entry rather than being caught downstream.
+- **Category performance:** Office Supplies had the highest unit volume relative to order count (Sticky Notes sold 10 units in a single order), while Electronics had the most repeat purchases across different customers, suggesting broader but shallower demand versus Office Supplies' concentrated bulk orders.
+- **Customer activity:** Churn-risk analysis on the sample data showed a gap of over 20 days between a customer's last order and the most recent order in the dataset, which would be a clear candidate for a re-engagement outreach in a real business setting.
+
+These are illustrative given the small sample size (25 rows); the same queries would surface more statistically meaningful patterns on a production-scale dataset.
+
+---
+
 ## Design decisions worth noting
 
 - **JPA for CRUD, SQL for analytics** - used the right tool for each job rather than forcing everything through one abstraction.
